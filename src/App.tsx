@@ -4,60 +4,15 @@ import { PriceChart } from './components/PriceChart';
 import { TimeRangeSelector } from './components/TimeRangeSelector';
 import { MarketSearch } from './components/MarketSearch';
 import { WatchlistPanel } from './components/WatchlistPanel';
+import { useMarketData } from './hooks/useMarketData';
 import type { MarketPriceData, TimeRange, Market } from './types';
-
-// Mock data for initial display
-const mockMarketData: MarketPriceData[] = [
-  {
-    marketId: '1',
-    marketName: 'Detroit, MI',
-    currentPrice: 225000,
-    priceChange: 5.2,
-    changeDirection: 'up',
-    historicalData: [],
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    marketId: '2',
-    marketName: 'Anaheim, CA',
-    currentPrice: 875000,
-    priceChange: -2.1,
-    changeDirection: 'down',
-    historicalData: [],
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    marketId: '3',
-    marketName: 'Austin, TX',
-    currentPrice: 550000,
-    priceChange: 8.7,
-    changeDirection: 'up',
-    historicalData: [],
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    marketId: '4',
-    marketName: 'Miami, FL',
-    currentPrice: 625000,
-    priceChange: 3.4,
-    changeDirection: 'up',
-    historicalData: [],
-    lastUpdated: new Date().toISOString(),
-  },
-  {
-    marketId: '5',
-    marketName: 'Seattle, WA',
-    currentPrice: 825000,
-    priceChange: -1.8,
-    changeDirection: 'down',
-    historicalData: [],
-    lastUpdated: new Date().toISOString(),
-  },
-];
 
 function App() {
   const [selectedMarket, setSelectedMarket] = useState<MarketPriceData | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('1Y');
+
+  // Fetch market data using the custom hook
+  const { data: marketData, loading, error } = useMarketData();
 
   const handleMarketClick = (market: MarketPriceData) => {
     setSelectedMarket(market);
@@ -81,7 +36,7 @@ function App() {
               Housing Market Data
             </h1>
             <div className="text-sm text-gray-500">
-              POC Phase 1
+              POC Phase 2
             </div>
           </div>
         </div>
@@ -100,21 +55,56 @@ function App() {
 
           {/* Main Content Area */}
           <div className="lg:col-span-3 space-y-6">
+            {/* Error Message */}
+            {error && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-sm text-yellow-800">{error}</p>
+              </div>
+            )}
+
             {/* Market Cards Grid */}
             <section>
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
                 Featured Markets
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {mockMarketData.map((market) => (
-                  <MarketCard
-                    key={market.marketId}
-                    market={market}
-                    onClick={() => handleMarketClick(market)}
-                    onAddToWatchlist={handleAddToWatchlist}
-                  />
-                ))}
-              </div>
+
+              {/* Loading State */}
+              {loading && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div
+                      key={i}
+                      className="bg-white rounded-lg shadow p-4 animate-pulse"
+                    >
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2 mb-4"></div>
+                      <div className="h-8 bg-gray-200 rounded w-2/3 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Market Data */}
+              {!loading && marketData.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {marketData.map((market) => (
+                    <MarketCard
+                      key={market.marketId}
+                      market={market}
+                      onClick={() => handleMarketClick(market)}
+                      onAddToWatchlist={handleAddToWatchlist}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* No Data State */}
+              {!loading && marketData.length === 0 && (
+                <div className="bg-gray-50 rounded-lg p-8 text-center">
+                  <p className="text-gray-500">No market data available</p>
+                </div>
+              )}
             </section>
 
             {/* Chart Section */}
@@ -143,7 +133,7 @@ function App() {
       <footer className="bg-white border-t border-gray-200 mt-12">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <p className="text-center text-sm text-gray-500">
-            Housing Data POC - Phase 1 Complete
+            Housing Data POC - Phase 2: API Integration
           </p>
         </div>
       </footer>
