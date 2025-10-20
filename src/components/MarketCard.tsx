@@ -3,7 +3,6 @@ import { formatPrice, formatPercentage } from '../utils/formatters';
 
 export const MarketCard = ({ market, onClick, onAddToWatchlist }: MarketCardProps) => {
   const isPositive = market.changeDirection === 'up';
-  const changeColor = isPositive ? 'text-price-up' : 'text-price-down';
   const arrow = isPositive ? '↑' : '↓';
 
   return (
@@ -33,7 +32,7 @@ export const MarketCard = ({ market, onClick, onAddToWatchlist }: MarketCardProp
         <p className="text-2xl font-bold text-gray-900 mb-1">
           {formatPrice(market.currentPrice)}
         </p>
-        <p className={`text-sm font-medium ${changeColor}`}>
+        <p className={`text-sm font-medium ${isPositive ? 'text-price-up' : 'text-price-down'}`}>
           {arrow} {formatPercentage(Math.abs(market.priceChange))}
         </p>
       </div>

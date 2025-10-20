@@ -1,6 +1,10 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #1e40af;
+  --color-price-up: #10b981;
+  --color-price-down: #ef4444;
+}
 
 /* Custom base styles */
 body {
