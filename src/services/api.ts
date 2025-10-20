@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance } from 'axios';
 import { API_BASE_URL, API_KEY } from '../utils/constants';
+import { IndexedDBCache as APICache, CACHE_TTL } from '../utils/indexedDBCache';
 
 /**
  * API Response types from RentCast
@@ -103,9 +104,23 @@ const apiClient = createAPIClient();
 /**
  * Search for properties by location
  * @param query - City name or ZIP code
+ * @param forceRefresh - Bypass cache and fetch fresh data
  * @returns Array of properties
  */
-export const searchProperties = async (query: string): Promise<RentCastProperty[]> => {
+export const searchProperties = async (
+  query: string,
+  forceRefresh: boolean = false
+): Promise<RentCastProperty[]> => {
+  const cacheKey = `search:${query.toLowerCase()}`;
+
+  // Check cache first (unless force refresh)
+  if (!forceRefresh) {
+    const cached = await APICache.get<RentCastProperty[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
   try {
     // Try ZIP code first (numeric)
     if (/^\d{5}$/.test(query)) {
@@ -115,7 +130,12 @@ export const searchProperties = async (query: string): Promise<RentCastProperty[
           limit: 50,
         },
       });
-      return response.data || [];
+      const data = response.data || [];
+
+      // Store in cache
+      APICache.set(cacheKey, data, CACHE_TTL.SEARCH);
+
+      return data;
     }
 
     // Otherwise search by city
@@ -125,7 +145,12 @@ export const searchProperties = async (query: string): Promise<RentCastProperty[
         limit: 50,
       },
     });
-    return response.data || [];
+    const data = response.data || [];
+
+    // Store in cache
+    APICache.set(cacheKey, data, CACHE_TTL.SEARCH);
+
+    return data;
   } catch (error) {
     if (error instanceof APIError) {
       throw error;
@@ -137,20 +162,54 @@ export const searchProperties = async (query: string): Promise<RentCastProperty[
 /**
  * Get market statistics for a location
  * @param location - City name or ZIP code
+ * @param forceRefresh - Bypass cache and fetch fresh data
  * @returns Market statistics
  */
 export const getMarketStats = async (
-  location: string
+  location: string,
+  forceRefresh: boolean = false
 ): Promise<RentCastMarketStats | null> => {
-  try {
-    const isZipCode = /^\d{5}$/.test(location);
+  const cacheKey = `market-stats:${location}`;
 
-    const response = await apiClient.get('/markets/statistics', {
-      params: isZipCode ? { zipCode: location } : { city: location },
-    });
+  // Check cache first (unless force refresh)
+  if (!forceRefresh) {
+    const cached = await APICache.get<RentCastMarketStats>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  const isZipCode = /^\d{5}$/.test(location);
+  const params = isZipCode ? { zipCode: location } : { city: location };
+
+  console.log(
+    '%c[API] Fetching market stats',
+    'color: #6366F1',
+    { location, params, endpoint: '/markets/statistics', cached: false }
+  );
+
+  try {
+    const response = await apiClient.get('/markets/statistics', { params });
+
+    console.log(
+      '%c[API] ✓ Success',
+      'color: #10B981',
+      { location, data: response.data }
+    );
+
+    // Store in cache
+    if (response.data) {
+      APICache.set(cacheKey, response.data, CACHE_TTL.MARKET_STATS);
+    }
 
     return response.data || null;
   } catch (error) {
+    console.error(
+      '%c[API] ✗ Failed',
+      'color: #EF4444; font-weight: bold',
+      { location, error }
+    );
+
     if (error instanceof APIError) {
       throw error;
     }

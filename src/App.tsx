@@ -1,18 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MarketCard } from './components/MarketCard';
 import { PriceChart } from './components/PriceChart';
 import { TimeRangeSelector } from './components/TimeRangeSelector';
 import { MarketSearch } from './components/MarketSearch';
 import { WatchlistPanel } from './components/WatchlistPanel';
+import { ApiStatusIndicator } from './components/ApiStatusIndicator';
+import { CacheManager } from './components/CacheManager';
+import { CacheMigration } from './components/CacheMigration';
 import { useMarketData } from './hooks/useMarketData';
+import { isAPIConfigured } from './services/api';
 import type { MarketPriceData, TimeRange, Market } from './types';
 
 function App() {
   const [selectedMarket, setSelectedMarket] = useState<MarketPriceData | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('1Y');
+  const [dataSource, setDataSource] = useState<'api' | 'mock' | 'partial'>('mock');
 
   // Fetch market data using the custom hook
-  const { data: marketData, loading, error } = useMarketData();
+  const { data: marketData, loading, error, forceRefresh } = useMarketData();
+
+  // Determine data source based on API configuration and data
+  useEffect(() => {
+    if (!isAPIConfigured()) {
+      setDataSource('mock');
+    } else if (marketData.length > 0) {
+      // If API is configured and we have data, assume it's from API
+      // (In a real app, we'd track this more explicitly)
+      setDataSource('api');
+    }
+  }, [marketData]);
 
   const handleMarketClick = (market: MarketPriceData) => {
     setSelectedMarket(market);
@@ -28,13 +44,19 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Cache Migration Notification */}
+      <CacheMigration />
+
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Housing Market Data
-            </h1>
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-bold text-gray-900">
+                Housing Market Data
+              </h1>
+              <ApiStatusIndicator hasError={!!error} dataSource={dataSource} />
+            </div>
             <div className="text-sm text-gray-500">
               POC Phase 2
             </div>
@@ -49,6 +71,7 @@ function App() {
           <aside className="lg:col-span-1">
             <div className="space-y-6">
               <MarketSearch onSelectMarket={handleSelectMarket} />
+              <CacheManager onClearCache={forceRefresh} />
               <WatchlistPanel onSelectMarket={(id) => console.log('Watchlist select:', id)} />
             </div>
           </aside>

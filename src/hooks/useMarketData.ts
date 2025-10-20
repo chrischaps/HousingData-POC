@@ -13,6 +13,7 @@ interface UseMarketDataResult {
   loading: boolean;
   error: string | null;
   refetch: () => void;
+  forceRefresh: () => void;
 }
 
 /**
@@ -74,11 +75,12 @@ const generateMockMarketData = (): MarketPriceData[] => {
 const fetchMarketData = async (
   city: string,
   state: string,
-  zipCode?: string
+  zipCode?: string,
+  forceRefresh: boolean = false
 ): Promise<MarketPriceData | null> => {
   try {
     const location = zipCode || `${city}, ${state}`;
-    const stats = await getMarketStats(location);
+    const stats = await getMarketStats(location, forceRefresh);
 
     if (!stats) {
       return null;
@@ -114,22 +116,44 @@ export const useMarketData = (): UseMarketDataResult => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = async (forceRefresh: boolean = false) => {
     setLoading(true);
     setError(null);
 
     // Check if API is configured
-    if (!isAPIConfigured()) {
-      console.warn('API key not configured, using mock data');
-      setData(generateMockMarketData());
+    const apiConfigured = isAPIConfigured();
+    console.log(
+      `%c[useMarketData] API Configuration Check`,
+      'color: #1E40AF; font-weight: bold',
+      { configured: apiConfigured, forceRefresh }
+    );
+
+    if (!apiConfigured) {
+      console.warn(
+        '%c[useMarketData] Using MOCK DATA',
+        'color: #F59E0B; font-weight: bold; font-size: 14px',
+        '- API key not configured in .env file'
+      );
+      const mockData = generateMockMarketData();
+      console.log(
+        '%c[useMarketData] Generated mock markets',
+        'color: #10B981',
+        { count: mockData.length, markets: mockData.map(m => m.marketName) }
+      );
+      setData(mockData);
       setLoading(false);
       return;
     }
 
+    console.log(
+      `%c[useMarketData] ${forceRefresh ? 'Force refreshing' : 'Attempting to fetch'} REAL API data`,
+      'color: #10B981; font-weight: bold; font-size: 14px'
+    );
+
     try {
       // Fetch data for all mock markets
       const promises = MOCK_MARKETS.map((market) =>
-        fetchMarketData(market.city, market.state, market.zipCode)
+        fetchMarketData(market.city, market.state, market.zipCode, forceRefresh)
       );
 
       const results = await Promise.all(promises);
@@ -139,12 +163,29 @@ export const useMarketData = (): UseMarketDataResult => {
         (result): result is MarketPriceData => result !== null
       );
 
+      console.log(
+        `%c[useMarketData] API Response Summary`,
+        'color: #1E40AF; font-weight: bold',
+        {
+          requested: MOCK_MARKETS.length,
+          received: validData.length,
+          markets: validData.map(m => ({ name: m.marketName, price: m.currentPrice }))
+        }
+      );
+
       if (validData.length === 0) {
-        console.warn('No valid data from API, using mock data');
+        console.warn(
+          '%c[useMarketData] No valid API data - Falling back to MOCK DATA',
+          'color: #F59E0B; font-weight: bold'
+        );
         setData(generateMockMarketData());
       } else {
         // If we got some data but not all, fill in with mock data
         if (validData.length < MOCK_MARKETS.length) {
+          console.warn(
+            `%c[useMarketData] Partial API data - Using ${validData.length} real + ${MOCK_MARKETS.length - validData.length} mock`,
+            'color: #F59E0B; font-weight: bold'
+          );
           const mockData = generateMockMarketData();
           const combined = [...validData];
 
@@ -155,6 +196,10 @@ export const useMarketData = (): UseMarketDataResult => {
 
           setData(combined);
         } else {
+          console.log(
+            '%c[useMarketData] ✓ Successfully loaded REAL API data',
+            'color: #10B981; font-weight: bold; font-size: 14px'
+          );
           setData(validData);
         }
       }
@@ -186,6 +231,7 @@ export const useMarketData = (): UseMarketDataResult => {
     data,
     loading,
     error,
-    refetch: fetchData,
+    refetch: () => fetchData(false),
+    forceRefresh: () => fetchData(true),
   };
 };
