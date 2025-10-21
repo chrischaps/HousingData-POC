@@ -19,12 +19,36 @@ interface RentCastProperty {
 }
 
 interface RentCastMarketStats {
+  id?: string;
   city?: string;
   state?: string;
   zipCode?: string;
+  // Direct properties (older API format)
   averagePrice?: number;
   medianPrice?: number;
   percentChange?: number;
+  // Nested saleData structure (current API format)
+  saleData?: {
+    lastUpdatedDate?: string;
+    averagePrice?: number;
+    medianPrice?: number;
+    minPrice?: number;
+    maxPrice?: number;
+    averagePricePerSquareFoot?: number;
+    medianPricePerSquareFoot?: number;
+    minPricePerSquareFoot?: number;
+    maxPricePerSquareFoot?: number;
+    averageSquareFootage?: number;
+    medianSquareFootage?: number;
+    minSquareFootage?: number;
+    maxSquareFootage?: number;
+    averageDaysOnMarket?: number;
+    medianDaysOnMarket?: number;
+    minDaysOnMarket?: number;
+  };
+  rentalData?: {
+    [key: string]: any;
+  };
 }
 
 /**
@@ -175,34 +199,110 @@ export const getMarketStats = async (
   if (!forceRefresh) {
     const cached = await APICache.get<RentCastMarketStats>(cacheKey);
     if (cached) {
+      console.log('%c[API] Using cached data', 'color: #10B981', { location, cached });
       return cached;
     }
   }
 
   const isZipCode = /^\d{5}$/.test(location);
-  const params = isZipCode ? { zipCode: location } : { city: location };
+
+  // Parse city,state format if not a zip code
+  let params: any;
+  if (isZipCode) {
+    params = { zipCode: location };
+  } else {
+    // Parse "City, State" format
+    const parts = location.split(',').map(s => s.trim());
+    if (parts.length === 2) {
+      params = { city: parts[0], state: parts[1] };
+    } else {
+      params = { city: location };
+    }
+  }
 
   console.log(
     '%c[API] Fetching market stats',
     'color: #6366F1',
-    { location, params, endpoint: '/markets/statistics', cached: false }
+    { location, params, endpoint: '/markets', cached: false }
   );
 
   try {
-    const response = await apiClient.get('/markets/statistics', { params });
+    const response = await apiClient.get('/markets', { params });
 
+    // Log the complete response structure
     console.log(
-      '%c[API] ✓ Success',
+      '%c[API] ✓ Success - Raw Response',
       'color: #10B981',
-      { location, data: response.data }
+      {
+        location,
+        dataType: typeof response.data,
+        isArray: Array.isArray(response.data),
+        hasMarketsArray: response.data?.markets ? true : false,
+        marketsLength: response.data?.markets?.length || 0,
+        responseKeys: response.data ? Object.keys(response.data) : [],
+        data: response.data
+      }
     );
 
-    // Store in cache
+    // Log response structure details
     if (response.data) {
-      APICache.set(cacheKey, response.data, CACHE_TTL.MARKET_STATS);
+      console.log(
+        '%c[API] Response structure details:',
+        'color: #6366F1',
+        {
+          topLevelKeys: Object.keys(response.data),
+          hasSaleData: !!response.data.saleData,
+          hasRentalData: !!response.data.rentalData,
+          hasMarkets: !!response.data.markets,
+          saleDataKeys: response.data.saleData ? Object.keys(response.data.saleData) : []
+        }
+      );
     }
 
-    return response.data || null;
+    // RentCast API returns the market data directly (not wrapped in an array)
+    let marketData = null;
+
+    if (response.data && response.data.saleData) {
+      // Direct market data response with saleData property
+      marketData = response.data;
+      console.log('%c[API] ✓ Using direct market response', 'color: #6366F1', {
+        id: marketData.id,
+        zipCode: marketData.zipCode,
+        hasSaleData: !!marketData.saleData,
+        hasRentalData: !!marketData.rentalData
+      });
+    } else if (response.data?.markets && Array.isArray(response.data.markets) && response.data.markets.length > 0) {
+      // Fallback: wrapped in markets array (in case API changes)
+      marketData = response.data.markets[0];
+      console.log('%c[API] ✓ Extracted from markets array', 'color: #6366F1', marketData);
+    } else {
+      console.warn(
+        '%c[API] ⚠ Unexpected response structure',
+        'color: #F59E0B; font-weight: bold',
+        { location, params, response: response.data }
+      );
+    }
+
+    // Store in cache (only if we have valid data)
+    const hasValidData = marketData && (
+      marketData.saleData?.averagePrice ||
+      marketData.saleData?.medianPrice ||
+      marketData.averagePrice ||
+      marketData.medianPrice
+    );
+
+    if (hasValidData) {
+      await APICache.set(cacheKey, marketData, CACHE_TTL.MARKET_STATS);
+      console.log('%c[API] ✓ Cached valid market data', 'color: #6366F1');
+    } else {
+      console.warn(
+        '%c[API] ⚠ No valid market data to cache',
+        'color: #F59E0B; font-weight: bold',
+        { location, params, marketData }
+      );
+    }
+
+    return marketData || null;
   } catch (error) {
     console.error(
       '%c[API] ✗ Failed',

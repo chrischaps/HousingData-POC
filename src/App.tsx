@@ -7,6 +7,7 @@ import { WatchlistPanel } from './components/WatchlistPanel';
 import { ApiStatusIndicator } from './components/ApiStatusIndicator';
 import { CacheManager } from './components/CacheManager';
 import { CacheMigration } from './components/CacheMigration';
+import { SettingsPanel } from './components/SettingsPanel';
 import { useMarketData } from './hooks/useMarketData';
 import { isAPIConfigured } from './services/api';
 import type { MarketPriceData, TimeRange, Market } from './types';
@@ -70,6 +71,7 @@ function App() {
           {/* Sidebar */}
           <aside className="lg:col-span-1">
             <div className="space-y-6">
+              <SettingsPanel />
               <MarketSearch onSelectMarket={handleSelectMarket} />
               <CacheManager onClearCache={forceRefresh} />
               <WatchlistPanel onSelectMarket={(id) => console.log('Watchlist select:', id)} />
