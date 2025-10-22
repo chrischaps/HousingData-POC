@@ -39,6 +39,11 @@ export interface MarketStats {
   rentalData?: {
     [key: string]: any;
   };
+  // Historical time-series data (for charts)
+  historicalPrices?: Array<{
+    date: string;
+    price: number;
+  }>;
 }
 
 /**

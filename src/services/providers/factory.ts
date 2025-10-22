@@ -7,6 +7,8 @@
 
 import type { IHousingDataProvider } from './types';
 import { MockProvider } from './mock.provider';
+import { ZillowMetricsProvider } from './zillow-metrics.provider';
+import { CSVProvider } from './csv.provider';
 
 /**
  * Get the configured provider type from environment or localStorage
@@ -54,6 +56,10 @@ export function createProvider(): IHousingDataProvider {
       // Lazy load RentCast provider
       return createRentCastProvider();
 
+    case 'csv':
+      // CSV file provider
+      return createCSVProvider();
+
     case 'mock':
     default:
       return new MockProvider();
@@ -62,18 +68,20 @@ export function createProvider(): IHousingDataProvider {
 
 /**
  * Create Zillow Metrics provider
- * (Will be implemented after API testing)
  */
 function createZillowMetricsProvider(): IHousingDataProvider {
-  console.warn(
-    '%c[Provider Factory] Zillow Metrics provider not yet implemented',
-    'color: #F59E0B; font-weight: bold',
-    'Falling back to Mock provider'
-  );
+  const provider = new ZillowMetricsProvider();
 
-  // TODO: Implement ZillowMetricsProvider after API testing
-  // For now, fall back to mock
-  return new MockProvider();
+  if (!provider.isConfigured()) {
+    console.warn(
+      '%c[Provider Factory] Zillow Metrics not configured',
+      'color: #F59E0B; font-weight: bold',
+      'Falling back to Mock provider. Add VITE_ZILLOW_METRICS_API_KEY to .env'
+    );
+    return new MockProvider();
+  }
+
+  return provider;
 }
 
 /**
@@ -90,6 +98,23 @@ function createRentCastProvider(): IHousingDataProvider {
   // TODO: Implement RentCastProvider by refactoring existing code
   // For now, fall back to mock
   return new MockProvider();
+}
+
+/**
+ * Create CSV provider
+ */
+function createCSVProvider(): IHousingDataProvider {
+  const provider = new CSVProvider();
+
+  if (!provider.isConfigured()) {
+    console.warn(
+      '%c[Provider Factory] CSV provider not configured',
+      'color: #F59E0B; font-weight: bold',
+      'No CSV file loaded. Upload a CSV file to use this provider'
+    );
+  }
+
+  return provider;
 }
 
 /**
@@ -111,11 +136,18 @@ export function getAvailableProviders(): Array<{
       status: 'available',
     },
     {
+      id: 'csv',
+      name: 'CSV File',
+      icon: '📊',
+      description: 'Upload your own market data from a CSV file',
+      status: 'available',
+    },
+    {
       id: 'zillow-metrics',
       name: 'Zillow Market Metrics',
       icon: '🏘️',
       description: 'Market-level statistics from national to neighborhood',
-      status: 'pending', // Will be 'requires-setup' after implementation
+      status: 'requires-setup',
     },
     {
       id: 'rentcast',

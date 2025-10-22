@@ -91,25 +91,32 @@ export const filterDataByTimeRange = (
     return [];
   }
 
-  const now = new Date();
-  const cutoffDate = new Date(now);
+  // For MAX, return all data
+  if (timeRange === 'MAX') {
+    return data;
+  }
+
+  // Use the most recent date in the data as the reference point
+  // (not current system date, since data might be historical)
+  const mostRecentDate = new Date(
+    Math.max(...data.map(point => new Date(point.date).getTime()))
+  );
+
+  const cutoffDate = new Date(mostRecentDate);
 
   switch (timeRange) {
     case '1M':
-      cutoffDate.setMonth(now.getMonth() - 1);
+      cutoffDate.setMonth(mostRecentDate.getMonth() - 1);
       break;
     case '6M':
-      cutoffDate.setMonth(now.getMonth() - 6);
+      cutoffDate.setMonth(mostRecentDate.getMonth() - 6);
       break;
     case '1Y':
-      cutoffDate.setFullYear(now.getFullYear() - 1);
+      cutoffDate.setFullYear(mostRecentDate.getFullYear() - 1);
       break;
     case '5Y':
-      cutoffDate.setFullYear(now.getFullYear() - 5);
+      cutoffDate.setFullYear(mostRecentDate.getFullYear() - 5);
       break;
-    case 'MAX':
-      // Return all data
-      return data;
   }
 
   return data.filter((point) => new Date(point.date) >= cutoffDate);

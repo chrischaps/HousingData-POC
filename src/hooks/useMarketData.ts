@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { MarketPriceData } from '../types';
-import { getMarketStats, isAPIConfigured, APIError } from '../services/api';
+import { createProvider, getProviderType, CSVProvider } from '../services/providers';
 import {
   transformToMarketPriceData,
   generateHistoricalData,
@@ -70,7 +70,7 @@ const generateMockMarketData = (): MarketPriceData[] => {
 };
 
 /**
- * Fetch market data for a single location
+ * Fetch market data for a single location using the provider pattern
  */
 const fetchMarketData = async (
   city: string,
@@ -80,7 +80,8 @@ const fetchMarketData = async (
 ): Promise<MarketPriceData | null> => {
   try {
     const location = zipCode || `${city}, ${state}`;
-    const stats = await getMarketStats(location, forceRefresh);
+    const provider = createProvider();
+    const stats = await provider.getMarketStats(location, forceRefresh);
 
     if (!stats) {
       return null;
@@ -120,38 +121,83 @@ export const useMarketData = (): UseMarketDataResult => {
     setLoading(true);
     setError(null);
 
-    // Check if API is configured
-    const apiConfigured = isAPIConfigured();
+    const providerType = getProviderType();
+    const provider = createProvider();
+
     console.log(
-      `%c[useMarketData] API Configuration Check`,
+      `%c[useMarketData] ${forceRefresh ? 'Force refreshing' : 'Fetching'} market data via provider`,
       'color: #1E40AF; font-weight: bold',
-      { configured: apiConfigured, forceRefresh }
-    );
-
-    if (!apiConfigured) {
-      console.warn(
-        '%c[useMarketData] Using MOCK DATA',
-        'color: #F59E0B; font-weight: bold; font-size: 14px',
-        '- API key not configured in .env file'
-      );
-      const mockData = generateMockMarketData();
-      console.log(
-        '%c[useMarketData] Generated mock markets',
-        'color: #10B981',
-        { count: mockData.length, markets: mockData.map(m => m.marketName) }
-      );
-      setData(mockData);
-      setLoading(false);
-      return;
-    }
-
-    console.log(
-      `%c[useMarketData] ${forceRefresh ? 'Force refreshing' : 'Attempting to fetch'} REAL API data`,
-      'color: #10B981; font-weight: bold; font-size: 14px'
+      { forceRefresh, providerType }
     );
 
     try {
-      // Fetch data for all mock markets
+      // For CSV provider, get markets directly from the loaded data
+      if (providerType === 'csv' && provider instanceof CSVProvider) {
+        // Wait for data to finish loading from IndexedDB
+        await provider.waitForDataLoad();
+
+        const allMarkets = provider.getAllMarkets();
+
+        if (allMarkets.length === 0) {
+          console.warn(
+            '%c[useMarketData] CSV provider has no markets - Falling back to MOCK DATA',
+            'color: #F59E0B; font-weight: bold'
+          );
+          setData(generateMockMarketData());
+          setLoading(false);
+          return;
+        }
+
+        // Take first 20 markets for display
+        const marketsToShow = allMarkets.slice(0, 20);
+
+        console.log(
+          '%c[useMarketData] Loading markets from CSV',
+          'color: #8B5CF6; font-weight: bold',
+          { total: allMarkets.length, showing: marketsToShow.length }
+        );
+
+        // Transform to MarketPriceData
+        const transformedMarkets = marketsToShow.map(stats => {
+          const marketId = stats.id || `${stats.city}-${stats.state}`;
+          const marketName = `${stats.city}, ${stats.state}`;
+          const marketData = transformToMarketPriceData(marketId, marketName, stats);
+
+          // Use real historical data if available, otherwise generate
+          if (stats.historicalPrices && stats.historicalPrices.length > 0) {
+            marketData.historicalData = stats.historicalPrices.map(h => ({
+              date: h.date,
+              price: h.price,
+            }));
+
+            console.log(
+              `%c[useMarketData] ${marketName} historical data`,
+              'color: #10B981',
+              {
+                dataPoints: marketData.historicalData.length,
+                dateRange: `${marketData.historicalData[0]?.date} to ${marketData.historicalData[marketData.historicalData.length - 1]?.date}`
+              }
+            );
+          } else {
+            // Generate historical data as fallback
+            marketData.historicalData = generateHistoricalData(
+              marketData.currentPrice,
+              marketData.changeDirection === 'up'
+                ? marketData.priceChange
+                : -marketData.priceChange,
+              12
+            );
+          }
+
+          return marketData;
+        }).filter(m => validateMarketData(m));
+
+        setData(transformedMarkets);
+        setLoading(false);
+        return;
+      }
+
+      // For other providers, fetch specific markets
       const promises = MOCK_MARKETS.map((market) =>
         fetchMarketData(market.city, market.state, market.zipCode, forceRefresh)
       );
@@ -206,12 +252,8 @@ export const useMarketData = (): UseMarketDataResult => {
     } catch (err) {
       console.error('Error fetching market data:', err);
 
-      if (err instanceof APIError) {
-        if (err.isRateLimit) {
-          setError('API rate limit exceeded. Showing cached data.');
-        } else {
-          setError(err.message);
-        }
+      if (err instanceof Error) {
+        setError(err.message);
       } else {
         setError('Failed to load market data. Showing sample data.');
       }

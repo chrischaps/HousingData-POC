@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MarketCard } from './components/MarketCard';
+import { MarketCardSkeletonGrid } from './components/MarketCardSkeleton';
 import { PriceChart } from './components/PriceChart';
 import { TimeRangeSelector } from './components/TimeRangeSelector';
 import { MarketSearch } from './components/MarketSearch';
@@ -66,10 +67,10 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <main className="max-w-7xl mx-auto px-4 py-4 sm:py-6 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
           {/* Sidebar */}
-          <aside className="lg:col-span-1">
+          <aside className="lg:col-span-1 space-y-4 sm:space-y-6">
             <div className="space-y-6">
               <SettingsPanel />
               <MarketSearch onSelectMarket={handleSelectMarket} />
@@ -79,11 +80,24 @@ function App() {
           </aside>
 
           {/* Main Content Area */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="lg:col-span-3 space-y-4 sm:space-y-6">
             {/* Error Message */}
             {error && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm text-yellow-800">{error}</p>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 animate-slideIn">
+                <div className="flex items-start gap-3">
+                  <span className="text-yellow-600 text-xl flex-shrink-0">⚠️</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-yellow-900 mb-1">
+                      Data Loading Issue
+                    </p>
+                    <p className="text-sm text-yellow-800">
+                      {error}
+                    </p>
+                    <p className="text-xs text-yellow-700 mt-2">
+                      Showing sample data for demonstration. Try uploading a CSV file or checking your API configuration.
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -96,23 +110,13 @@ function App() {
               {/* Loading State */}
               {loading && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div
-                      key={i}
-                      className="bg-white rounded-lg shadow p-4 animate-pulse"
-                    >
-                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2 mb-4"></div>
-                      <div className="h-8 bg-gray-200 rounded w-2/3 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/3"></div>
-                    </div>
-                  ))}
+                  <MarketCardSkeletonGrid count={5} />
                 </div>
               )}
 
               {/* Market Data */}
               {!loading && marketData.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger-animation">
                   {marketData.map((market) => (
                     <MarketCard
                       key={market.marketId}
@@ -134,9 +138,9 @@ function App() {
 
             {/* Chart Section */}
             {selectedMarket && (
-              <section className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold text-gray-900">
+              <section className="space-y-3 sm:space-y-4 animate-fadeIn">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
                     {selectedMarket.marketName}
                   </h2>
                   <TimeRangeSelector

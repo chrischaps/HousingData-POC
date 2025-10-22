@@ -1,4 +1,4 @@
-import { isAPIConfigured } from '../services/api';
+import { createProvider, getProviderType } from '../services/providers';
 
 interface ApiStatusIndicatorProps {
   hasError: boolean;
@@ -6,7 +6,9 @@ interface ApiStatusIndicatorProps {
 }
 
 export const ApiStatusIndicator = ({ hasError, dataSource }: ApiStatusIndicatorProps) => {
-  const apiConfigured = isAPIConfigured();
+  const provider = createProvider();
+  const providerType = getProviderType();
+  const isConfigured = provider.isConfigured();
 
   // Determine status based on configuration and data source
   let status: 'live' | 'mock' | 'error' | 'partial';
@@ -19,32 +21,37 @@ export const ApiStatusIndicator = ({ hasError, dataSource }: ApiStatusIndicatorP
     icon = '🔴';
     label = 'API Error';
     colorClasses = 'bg-red-100 text-red-800 border-red-300';
-  } else if (!apiConfigured) {
+  } else if (providerType === 'mock') {
+    status = 'mock';
+    icon = provider.info.icon;
+    label = provider.info.name;
+    colorClasses = 'bg-yellow-100 text-yellow-800 border-yellow-300';
+  } else if (!isConfigured) {
     status = 'mock';
     icon = '🟡';
-    label = 'Mock Data';
+    label = 'Not Configured';
     colorClasses = 'bg-yellow-100 text-yellow-800 border-yellow-300';
   } else if (dataSource === 'partial') {
     status = 'partial';
     icon = '🟠';
-    label = 'Partial API';
+    label = `Partial ${provider.info.name}`;
     colorClasses = 'bg-orange-100 text-orange-800 border-orange-300';
   } else if (dataSource === 'api') {
     status = 'live';
-    icon = '🟢';
-    label = 'Live API';
+    icon = provider.info.icon;
+    label = provider.info.name;
     colorClasses = 'bg-green-100 text-green-800 border-green-300';
   } else {
     status = 'mock';
-    icon = '🟡';
-    label = 'Mock Data';
+    icon = provider.info.icon;
+    label = provider.info.name;
     colorClasses = 'bg-yellow-100 text-yellow-800 border-yellow-300';
   }
 
   return (
     <div
       className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${colorClasses}`}
-      title={getTooltipText(status, apiConfigured)}
+      title={getTooltipText(status, provider.info, isConfigured)}
     >
       <span>{icon}</span>
       <span>{label}</span>
@@ -52,18 +59,22 @@ export const ApiStatusIndicator = ({ hasError, dataSource }: ApiStatusIndicatorP
   );
 };
 
-function getTooltipText(status: 'live' | 'mock' | 'error' | 'partial', apiConfigured: boolean): string {
+function getTooltipText(
+  status: 'live' | 'mock' | 'error' | 'partial',
+  providerInfo: { name: string; description: string },
+  isConfigured: boolean
+): string {
   switch (status) {
     case 'live':
-      return 'Connected to RentCast API - Showing real market data';
+      return `Connected to ${providerInfo.name} - ${providerInfo.description}`;
     case 'mock':
-      return apiConfigured
-        ? 'API configured but using mock data as fallback'
-        : 'API key not configured - Using mock data (check .env file)';
+      return isConfigured
+        ? `${providerInfo.name} configured but using mock data as fallback`
+        : `${providerInfo.name} not configured - Check .env file`;
     case 'error':
       return 'API request failed - Showing cached/mock data';
     case 'partial':
-      return 'Some API calls succeeded - Using mix of real and mock data';
+      return `Some ${providerInfo.name} calls succeeded - Using mix of real and mock data`;
     default:
       return 'Data source unknown';
   }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getAvailableProviders, getProviderType } from '../services/providers';
 import { IndexedDBCache as APICache } from '../utils/indexedDBCache';
+import { CSVUpload } from './CSVUpload';
 
 interface SettingsPanelProps {
   onProviderChange?: () => void;
@@ -13,6 +14,15 @@ const PROVIDER_INFO = [
     icon: '🎭',
     limits: 'Unlimited',
     description: 'Sample data for development and testing',
+    requiresKey: false,
+    status: 'available' as const,
+  },
+  {
+    id: 'csv',
+    name: 'CSV File',
+    icon: '📊',
+    limits: 'Unlimited',
+    description: 'Upload your own market data from a CSV file',
     requiresKey: false,
     status: 'available' as const,
   },
@@ -149,11 +159,24 @@ export const SettingsPanel = ({ onProviderChange }: SettingsPanelProps) => {
         ))}
       </div>
 
+      {/* CSV Upload Section */}
+      {selectedProvider === 'csv' && (
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <CSVUpload onUploadSuccess={() => {
+            console.log('%c[Settings Panel] CSV uploaded, refreshing...', 'color: #8B5CF6');
+            // Optionally trigger a data refresh
+            if (onProviderChange) {
+              onProviderChange();
+            }
+          }} />
+        </div>
+      )}
+
       {/* Help Text */}
       <div className="mt-4 pt-4 border-t border-gray-200">
         <p className="text-xs text-gray-500">
           💡 <strong>Tip:</strong> Switch providers to compare data sources or work around rate limits.
-          Mock data is perfect for development without using API credits.
+          {selectedProvider === 'csv' ? ' Upload a CSV file to use your own data.' : ' Mock data is perfect for development without using API credits.'}
         </p>
       </div>
     </div>
