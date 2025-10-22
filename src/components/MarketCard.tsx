@@ -7,7 +7,7 @@ export const MarketCard = ({ market, onClick, onAddToWatchlist }: MarketCardProp
 
   return (
     <div
-      className="bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-lg transition-shadow duration-200"
+      className="bg-white rounded-lg shadow p-4 cursor-pointer hover-lift hover:shadow-lg"
       onClick={onClick}
     >
       <div className="flex justify-between items-start mb-3">
