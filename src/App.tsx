@@ -12,6 +12,7 @@ import { SettingsPanel } from './components/SettingsPanel';
 import { useMarketData } from './hooks/useMarketData';
 import { isAPIConfigured } from './services/api';
 import type { MarketPriceData, TimeRange, Market } from './types';
+import packageJson from '../package.json';
 
 function App() {
   const [selectedMarket, setSelectedMarket] = useState<MarketPriceData | null>(null);
@@ -60,7 +61,7 @@ function App() {
               <ApiStatusIndicator hasError={!!error} dataSource={dataSource} />
             </div>
             <div className="text-sm text-gray-500">
-              POC Phase 2
+              POC Phase 2 <span className="text-gray-400">v{packageJson.version}</span>
             </div>
           </div>
         </div>
@@ -162,7 +163,7 @@ function App() {
       <footer className="bg-white border-t border-gray-200 mt-12">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <p className="text-center text-sm text-gray-500">
-            Housing Data POC - Phase 2: API Integration
+            Housing Data POC - Phase 2: API Integration <span className="text-gray-400">| v{packageJson.version}</span>
           </p>
         </div>
       </footer>
