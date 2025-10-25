@@ -23,6 +23,8 @@ export class CSVProvider extends BaseProvider {
   private cachedMarkets: Map<string, MarketStats> = new Map();
   private isDataLoaded: boolean = false;
   private loadingPromise: Promise<void> | null = null;
+  private loadingProgress: number = 0;
+  private loadingMessage: string = '';
 
   readonly info: ProviderInfo = {
     id: 'csv',
@@ -57,6 +59,20 @@ export class CSVProvider extends BaseProvider {
     if (this.loadingPromise) {
       await this.loadingPromise;
     }
+  }
+
+  /**
+   * Get current loading progress (0-100)
+   */
+  getLoadingProgress(): number {
+    return this.loadingProgress;
+  }
+
+  /**
+   * Get current loading message
+   */
+  getLoadingMessage(): string {
+    return this.loadingMessage;
   }
 
   isConfigured(): boolean {
@@ -113,6 +129,9 @@ export class CSVProvider extends BaseProvider {
    */
   private async loadDefaultCSV(): Promise<void> {
     try {
+      this.loadingProgress = 0;
+      this.loadingMessage = 'Downloading housing data...';
+
       console.log(
         '%c[CSV Provider] Fetching default CSV file',
         'color: #8B5CF6; font-weight: bold',
@@ -125,7 +144,49 @@ export class CSVProvider extends BaseProvider {
         throw new Error(`Failed to fetch default CSV: ${response.statusText}`);
       }
 
-      const csvContent = await response.text();
+      // Get total file size for progress tracking
+      const contentLength = response.headers.get('content-length');
+      const total = contentLength ? parseInt(contentLength, 10) : 0;
+
+      this.loadingMessage = total > 0
+        ? `Downloading ${(total / 1024 / 1024).toFixed(1)} MB...`
+        : 'Downloading data...';
+
+      let loaded = 0;
+      const reader = response.body?.getReader();
+      const chunks: Uint8Array[] = [];
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          chunks.push(value);
+          loaded += value.length;
+
+          if (total > 0) {
+            this.loadingProgress = Math.round((loaded / total) * 90); // Reserve 10% for parsing
+            console.log(
+              `%c[CSV Provider] Download progress: ${this.loadingProgress}%`,
+              'color: #8B5CF6',
+              { loaded: `${(loaded / 1024 / 1024).toFixed(1)} MB`, total: `${(total / 1024 / 1024).toFixed(1)} MB` }
+            );
+          }
+        }
+      }
+
+      // Combine chunks into single array
+      const allChunks = new Uint8Array(loaded);
+      let position = 0;
+      for (const chunk of chunks) {
+        allChunks.set(chunk, position);
+        position += chunk.length;
+      }
+
+      // Decode to text
+      const csvContent = new TextDecoder('utf-8').decode(allChunks);
+      this.loadingProgress = 90;
+      this.loadingMessage = 'Processing data...';
 
       // Validate CSV content
       const validation = validateCSVContent(csvContent);
@@ -150,6 +211,8 @@ export class CSVProvider extends BaseProvider {
       // Cache markets in memory
       this.cacheMarkets(markets);
       this.isDataLoaded = true;
+      this.loadingProgress = 100;
+      this.loadingMessage = 'Complete!';
 
       console.log(
         '%c[CSV Provider] ✓ Default CSV loaded successfully',
@@ -157,6 +220,8 @@ export class CSVProvider extends BaseProvider {
         { markets: markets.length, source: 'default' }
       );
     } catch (error) {
+      this.loadingProgress = 0;
+      this.loadingMessage = '';
       console.error(
         '%c[CSV Provider] Failed to load default CSV',
         'color: #EF4444; font-weight: bold',

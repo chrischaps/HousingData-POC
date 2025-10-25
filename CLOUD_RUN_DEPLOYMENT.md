@@ -250,19 +250,39 @@ location /data/ {
 **Cause:** CORS policy not configured on bucket
 
 **Solution:** Set CORS policy:
+
+PowerShell:
+```powershell
+# Create cors.json file
+@'
+[
+  {
+    "origin": ["*"],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type", "Content-Length", "Cache-Control"],
+    "maxAgeSeconds": 3600
+  }
+]
+'@ | Out-File -FilePath cors.json -Encoding utf8
+
+# Apply CORS configuration
+gcloud storage buckets update gs://your-bucket --cors-file=cors.json
+```
+
+Bash:
 ```bash
 cat > cors.json <<'EOF'
 [
   {
     "origin": ["*"],
-    "method": ["GET"],
-    "responseHeader": ["Content-Type"],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type", "Content-Length", "Cache-Control"],
     "maxAgeSeconds": 3600
   }
 ]
 EOF
 
-gsutil cors set cors.json gs://your-bucket
+gcloud storage buckets update gs://your-bucket --cors-file=cors.json
 ```
 
 ### Container build times out

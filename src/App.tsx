@@ -9,6 +9,7 @@ import { ApiStatusIndicator } from './components/ApiStatusIndicator';
 import { CacheManager } from './components/CacheManager';
 import { CacheMigration } from './components/CacheMigration';
 import { SettingsPanel } from './components/SettingsPanel';
+import { LoadingProgress } from './components/LoadingProgress';
 import { useMarketData } from './hooks/useMarketData';
 import { isAPIConfigured } from './services/api';
 import type { MarketPriceData, TimeRange, Market } from './types';
@@ -47,6 +48,9 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Loading Progress Overlay */}
+      <LoadingProgress />
+
       {/* Cache Migration Notification */}
       <CacheMigration />
 
