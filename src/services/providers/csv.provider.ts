@@ -13,7 +13,11 @@ import { IndexedDBCache } from '../../utils/indexedDBCache';
 const CSV_FILENAME_STORAGE_KEY = 'csv-file-name';
 const CSV_MARKETS_STORAGE_KEY = 'csv-parsed-markets';
 const CSV_DATA_SOURCE_KEY = 'csv-data-source'; // 'default' or 'user-upload'
-const DEFAULT_CSV_PATH = '/data/default-housing-data.csv';
+
+// Support environment variable for Cloud Run / serverless deployments
+// Use VITE_DEFAULT_CSV_URL to point to Cloud Storage or CDN
+// Falls back to local file in public folder
+const DEFAULT_CSV_PATH = import.meta.env.VITE_DEFAULT_CSV_URL || '/data/default-housing-data.csv';
 
 export class CSVProvider extends BaseProvider {
   private cachedMarkets: Map<string, MarketStats> = new Map();
