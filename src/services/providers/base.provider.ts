@@ -27,7 +27,7 @@ export abstract class BaseProvider implements IHousingDataProvider {
    * Fetch properties from the provider's API (optional)
    * Override if provider supports property search
    */
-  protected async fetchPropertiesFromAPI(query: string): Promise<Property[]> {
+  protected async fetchPropertiesFromAPI(_query: string): Promise<Property[]> {
     throw new Error(`${this.info.name} does not support property search`);
   }
 

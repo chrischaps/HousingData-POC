@@ -40,7 +40,6 @@ function parseZillowZHVI(lines: string[], headers: string[]): MarketStats[] {
   // Find column indices
   const regionIDIdx = headers.indexOf('regionid');
   const regionNameIdx = headers.indexOf('regionname');
-  const stateNameIdx = headers.indexOf('statename');
   const stateIdx = headers.indexOf('state');
 
   // Find all date columns (YYYY-MM-DD format)
@@ -93,7 +92,6 @@ function parseZillowZHVI(lines: string[], headers: string[]): MarketStats[] {
     try {
       const regionID = values[regionIDIdx];
       const city = values[regionNameIdx];
-      const stateName = values[stateNameIdx];
       const state = values[stateIdx];
 
       if (!city || !state) {

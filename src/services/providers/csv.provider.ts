@@ -10,9 +10,10 @@ import type { MarketStats, ProviderInfo } from './types';
 import { parseCSV, validateCSVContent } from '../../utils/csvParser';
 import { IndexedDBCache } from '../../utils/indexedDBCache';
 
-const CSV_DATA_STORAGE_KEY = 'csv-file-content';
 const CSV_FILENAME_STORAGE_KEY = 'csv-file-name';
 const CSV_MARKETS_STORAGE_KEY = 'csv-parsed-markets';
+const CSV_DATA_SOURCE_KEY = 'csv-data-source'; // 'default' or 'user-upload'
+const DEFAULT_CSV_PATH = '/data/default-housing-data.csv';
 
 export class CSVProvider extends BaseProvider {
   private cachedMarkets: Map<string, MarketStats> = new Map();
@@ -59,7 +60,7 @@ export class CSVProvider extends BaseProvider {
   }
 
   /**
-   * Load CSV data from IndexedDB if available
+   * Load CSV data from IndexedDB if available, otherwise load default CSV
    */
   private async loadDataFromStorage(): Promise<void> {
     try {
@@ -68,11 +69,12 @@ export class CSVProvider extends BaseProvider {
 
       if (cachedMarkets && cachedMarkets.length > 0) {
         const filename = localStorage.getItem(CSV_FILENAME_STORAGE_KEY) || 'unknown.csv';
+        const dataSource = localStorage.getItem(CSV_DATA_SOURCE_KEY) || 'user-upload';
 
         console.log(
           '%c[CSV Provider] Loading parsed markets from IndexedDB',
           'color: #8B5CF6; font-weight: bold',
-          { filename, markets: cachedMarkets.length }
+          { filename, markets: cachedMarkets.length, source: dataSource }
         );
 
         this.cacheMarkets(cachedMarkets);
@@ -81,16 +83,17 @@ export class CSVProvider extends BaseProvider {
         console.log(
           '%c[CSV Provider] ✓ Data loaded successfully',
           'color: #10B981; font-weight: bold',
-          { markets: cachedMarkets.length, filename }
+          { markets: cachedMarkets.length, filename, source: dataSource }
         );
         return;
       }
 
+      // No cached data - load default CSV from public folder
       console.log(
-        '%c[CSV Provider] No data in storage',
-        'color: #8B5CF6',
-        'Upload a CSV file to use this provider'
+        '%c[CSV Provider] No cached data, loading default CSV',
+        'color: #8B5CF6; font-weight: bold'
       );
+      await this.loadDefaultCSV();
     } catch (error) {
       console.error(
         '%c[CSV Provider] Failed to load data from storage',
@@ -98,6 +101,64 @@ export class CSVProvider extends BaseProvider {
         error
       );
       await this.clearData();
+    }
+  }
+
+  /**
+   * Load default CSV file from public folder
+   */
+  private async loadDefaultCSV(): Promise<void> {
+    try {
+      console.log(
+        '%c[CSV Provider] Fetching default CSV file',
+        'color: #8B5CF6; font-weight: bold',
+        { path: DEFAULT_CSV_PATH }
+      );
+
+      const response = await fetch(DEFAULT_CSV_PATH);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch default CSV: ${response.statusText}`);
+      }
+
+      const csvContent = await response.text();
+
+      // Validate CSV content
+      const validation = validateCSVContent(csvContent);
+      if (!validation.valid) {
+        throw new Error(`Default CSV validation failed: ${validation.error}`);
+      }
+
+      // Parse CSV
+      const markets = parseCSV(csvContent);
+
+      if (markets.length === 0) {
+        throw new Error('No valid market data found in default CSV file');
+      }
+
+      // Store parsed markets in IndexedDB
+      await IndexedDBCache.set(CSV_MARKETS_STORAGE_KEY, markets, Infinity);
+
+      // Store metadata in localStorage
+      localStorage.setItem(CSV_FILENAME_STORAGE_KEY, 'default-housing-data.csv');
+      localStorage.setItem(CSV_DATA_SOURCE_KEY, 'default');
+
+      // Cache markets in memory
+      this.cacheMarkets(markets);
+      this.isDataLoaded = true;
+
+      console.log(
+        '%c[CSV Provider] ✓ Default CSV loaded successfully',
+        'color: #10B981; font-weight: bold',
+        { markets: markets.length, source: 'default' }
+      );
+    } catch (error) {
+      console.error(
+        '%c[CSV Provider] Failed to load default CSV',
+        'color: #EF4444; font-weight: bold',
+        error
+      );
+      throw error;
     }
   }
 
@@ -172,6 +233,7 @@ export class CSVProvider extends BaseProvider {
 
       // Store filename in localStorage (small, so localStorage is fine)
       localStorage.setItem(CSV_FILENAME_STORAGE_KEY, file.name);
+      localStorage.setItem(CSV_DATA_SOURCE_KEY, 'user-upload');
 
       // Cache markets in memory
       this.cacheMarkets(markets);
@@ -180,7 +242,7 @@ export class CSVProvider extends BaseProvider {
       console.log(
         '%c[CSV Provider] ✓ File uploaded successfully',
         'color: #10B981; font-weight: bold',
-        { filename: file.name, markets: markets.length }
+        { filename: file.name, markets: markets.length, source: 'user-upload' }
       );
 
       return { success: true, markets: markets.length };
@@ -249,11 +311,42 @@ export class CSVProvider extends BaseProvider {
   }
 
   /**
+   * Get data source ('default' or 'user-upload')
+   */
+  getDataSource(): 'default' | 'user-upload' {
+    return (localStorage.getItem(CSV_DATA_SOURCE_KEY) as 'default' | 'user-upload') || 'default';
+  }
+
+  /**
+   * Check if currently using default data
+   */
+  isUsingDefaultData(): boolean {
+    return this.getDataSource() === 'default';
+  }
+
+  /**
+   * Reset to default CSV data
+   */
+  async resetToDefault(): Promise<void> {
+    console.log(
+      '%c[CSV Provider] Resetting to default data',
+      'color: #8B5CF6; font-weight: bold'
+    );
+
+    // Clear current data
+    await this.clearData();
+
+    // Load default CSV
+    await this.loadDefaultCSV();
+  }
+
+  /**
    * Clear all CSV data
    */
   async clearData(): Promise<void> {
-    await IndexedDBCache.delete(CSV_MARKETS_STORAGE_KEY);
+    await IndexedDBCache.remove(CSV_MARKETS_STORAGE_KEY);
     localStorage.removeItem(CSV_FILENAME_STORAGE_KEY);
+    localStorage.removeItem(CSV_DATA_SOURCE_KEY);
     this.cachedMarkets.clear();
     this.isDataLoaded = false;
 

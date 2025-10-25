@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAvailableProviders, getProviderType } from '../services/providers';
+import { getProviderType } from '../services/providers';
 import { IndexedDBCache as APICache } from '../utils/indexedDBCache';
 import { CSVUpload } from './CSVUpload';
 

@@ -198,6 +198,7 @@ export const useMarketData = (): UseMarketDataResult => {
             marketData.historicalData = stats.historicalPrices.map(h => ({
               date: h.date,
               price: h.price,
+              propertyType: 'single_family' as const,
             }));
 
             console.log(

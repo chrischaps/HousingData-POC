@@ -10,7 +10,7 @@
 
 import axios, { type AxiosInstance } from 'axios';
 import { BaseProvider } from './base.provider';
-import type { MarketStats, Property, ProviderInfo } from './types';
+import type { MarketStats, ProviderInfo } from './types';
 
 interface ZillowMetricResponse {
   success: boolean;

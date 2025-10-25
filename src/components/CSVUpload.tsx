@@ -94,11 +94,35 @@ export const CSVUpload = ({ onUploadSuccess }: CSVUploadProps) => {
 
   const currentFile = provider.getFilename();
   const isConfigured = provider.isConfigured();
+  const dataSource = provider.getDataSource();
+  const isUsingDefault = provider.isUsingDefaultData();
+
+  const handleResetToDefault = async () => {
+    setUploading(true);
+    setError(null);
+    setSuccess(null);
+    setUploadProgress('Resetting to default data...');
+
+    try {
+      await provider.resetToDefault();
+      setSuccess('Reset to default Zillow ZHVI data');
+
+      if (onUploadSuccess) {
+        onUploadSuccess();
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to reset to default data';
+      setError(errorMessage);
+    } finally {
+      setUploading(false);
+      setUploadProgress('');
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg shadow p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900">CSV File Upload</h3>
+        <h3 className="text-sm font-semibold text-gray-900">Data Source</h3>
         <button
           onClick={handleDownloadTemplate}
           className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
@@ -108,29 +132,33 @@ export const CSVUpload = ({ onUploadSuccess }: CSVUploadProps) => {
         </button>
       </div>
 
-      {/* Current file info */}
+      {/* Current data source info */}
       {isConfigured && currentFile && (
-        <div className="bg-green-50 border border-green-200 rounded px-3 py-2">
+        <div className={`border rounded px-3 py-2 ${isUsingDefault ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-green-600">✓</span>
-              <span className="text-xs text-green-800 font-medium truncate">{currentFile}</span>
+              <span className={isUsingDefault ? 'text-blue-600' : 'text-green-600'}>
+                {isUsingDefault ? '📊' : '✓'}
+              </span>
+              <div>
+                <span className={`text-xs font-medium truncate ${isUsingDefault ? 'text-blue-800' : 'text-green-800'}`}>
+                  {isUsingDefault ? 'Default Zillow ZHVI data' : currentFile}
+                </span>
+                <p className={`text-xs ${isUsingDefault ? 'text-blue-700' : 'text-green-700'}`}>
+                  {provider.getAllMarkets().length} markets loaded • {dataSource === 'default' ? 'Default' : 'Custom upload'}
+                </p>
+              </div>
             </div>
-            <button
-              onClick={async () => {
-                await provider.clearData();
-                setSuccess(null);
-                setError(null);
-              }}
-              className="text-xs text-red-600 hover:text-red-800"
-              title="Remove CSV file"
-            >
-              ✕
-            </button>
+            {!isUsingDefault && (
+              <button
+                onClick={handleResetToDefault}
+                className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                title="Reset to default data"
+              >
+                ↺ Reset
+              </button>
+            )}
           </div>
-          <p className="text-xs text-green-700 mt-1">
-            {provider.getAllMarkets().length} markets loaded
-          </p>
         </div>
       )}
 
@@ -169,10 +197,10 @@ export const CSVUpload = ({ onUploadSuccess }: CSVUploadProps) => {
               <>
                 <span className="text-2xl">📄</span>
                 <span className="text-sm font-medium text-gray-700">
-                  Choose CSV File
+                  {isUsingDefault ? 'Upload Custom CSV' : 'Choose CSV File'}
                 </span>
                 <span className="text-xs text-gray-500">
-                  or drag and drop
+                  {isUsingDefault ? 'Override default data' : 'or drag and drop'}
                 </span>
               </>
             )}
