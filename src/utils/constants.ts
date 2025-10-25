@@ -10,11 +10,12 @@ export const TIME_RANGES = ['1M', '6M', '1Y', '5Y', 'MAX'] as const;
 
 // Mock markets for initial display
 export const MOCK_MARKETS = [
-  { id: '1', name: 'Detroit, MI', city: 'Detroit', state: 'MI', zipCode: '48201' },
-  { id: '2', name: 'Anaheim, CA', city: 'Anaheim', state: 'CA', zipCode: '92805' },
+  { id: '1', name: 'New York, NY', city: 'New York', state: 'NY', zipCode: '10001' },
+  { id: '2', name: 'Los Angeles, CA', city: 'Los Angeles', state: 'CA', zipCode: '90001' },
   { id: '3', name: 'Austin, TX', city: 'Austin', state: 'TX', zipCode: '78701' },
-  { id: '4', name: 'Miami, FL', city: 'Miami', state: 'FL', zipCode: '33101' },
-  { id: '5', name: 'Seattle, WA', city: 'Seattle', state: 'WA', zipCode: '98101' },
+  { id: '4', name: 'Columbus, OH', city: 'Columbus', state: 'OH', zipCode: '43201' },
+  { id: '5', name: 'Houston, TX', city: 'Houston', state: 'TX', zipCode: '77001' },
+  { id: '6', name: 'San Antonio, TX', city: 'San Antonio', state: 'TX', zipCode: '78201' },
 ];
 
 // Design system colors (matching Tailwind config)

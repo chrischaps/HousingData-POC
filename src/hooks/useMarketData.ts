@@ -23,20 +23,20 @@ const generateMockMarketData = (): MarketPriceData[] => {
   return [
     {
       marketId: '1',
-      marketName: 'Detroit, MI',
-      currentPrice: 225000,
-      priceChange: 5.2,
+      marketName: 'New York, NY',
+      currentPrice: 725000,
+      priceChange: 3.8,
       changeDirection: 'up',
-      historicalData: generateHistoricalData(225000, 5.2, 12),
+      historicalData: generateHistoricalData(725000, 3.8, 12),
       lastUpdated: new Date().toISOString(),
     },
     {
       marketId: '2',
-      marketName: 'Anaheim, CA',
+      marketName: 'Los Angeles, CA',
       currentPrice: 875000,
       priceChange: 2.1,
-      changeDirection: 'down',
-      historicalData: generateHistoricalData(875000, -2.1, 12),
+      changeDirection: 'up',
+      historicalData: generateHistoricalData(875000, 2.1, 12),
       lastUpdated: new Date().toISOString(),
     },
     {
@@ -50,20 +50,29 @@ const generateMockMarketData = (): MarketPriceData[] => {
     },
     {
       marketId: '4',
-      marketName: 'Miami, FL',
-      currentPrice: 625000,
-      priceChange: 3.4,
+      marketName: 'Columbus, OH',
+      currentPrice: 325000,
+      priceChange: 4.5,
       changeDirection: 'up',
-      historicalData: generateHistoricalData(625000, 3.4, 12),
+      historicalData: generateHistoricalData(325000, 4.5, 12),
       lastUpdated: new Date().toISOString(),
     },
     {
       marketId: '5',
-      marketName: 'Seattle, WA',
-      currentPrice: 825000,
-      priceChange: 1.8,
-      changeDirection: 'down',
-      historicalData: generateHistoricalData(825000, -1.8, 12),
+      marketName: 'Houston, TX',
+      currentPrice: 375000,
+      priceChange: 6.2,
+      changeDirection: 'up',
+      historicalData: generateHistoricalData(375000, 6.2, 12),
+      lastUpdated: new Date().toISOString(),
+    },
+    {
+      marketId: '6',
+      marketName: 'San Antonio, TX',
+      currentPrice: 295000,
+      priceChange: 5.9,
+      changeDirection: 'up',
+      historicalData: generateHistoricalData(295000, 5.9, 12),
       lastUpdated: new Date().toISOString(),
     },
   ];
@@ -148,13 +157,34 @@ export const useMarketData = (): UseMarketDataResult => {
           return;
         }
 
-        // Take first 20 markets for display
-        const marketsToShow = allMarkets.slice(0, 20);
+        // Featured cities to display (matching MOCK_MARKETS)
+        const featuredCities = [
+          { city: 'New York', state: 'NY' },
+          { city: 'Los Angeles', state: 'CA' },
+          { city: 'Austin', state: 'TX' },
+          { city: 'Columbus', state: 'OH' },
+          { city: 'Houston', state: 'TX' },
+          { city: 'San Antonio', state: 'TX' },
+        ];
+
+        // Filter for featured cities only
+        const marketsToShow = featuredCities
+          .map(({ city, state }) =>
+            allMarkets.find(market =>
+              market.city === city && market.state === state
+            )
+          )
+          .filter((market): market is NonNullable<typeof market> => market !== undefined);
 
         console.log(
           '%c[useMarketData] Loading markets from CSV',
           'color: #8B5CF6; font-weight: bold',
-          { total: allMarkets.length, showing: marketsToShow.length }
+          {
+            total: allMarkets.length,
+            requested: featuredCities.length,
+            found: marketsToShow.length,
+            markets: marketsToShow.map(m => `${m.city}, ${m.state}`)
+          }
         );
 
         // Transform to MarketPriceData
